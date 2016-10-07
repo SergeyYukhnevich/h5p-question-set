@@ -77,7 +77,6 @@ H5P.QuestionSet = function (options, contentId, contentData) {
           '</div>';
 
   var defaults = {
-    randomOrder: false,
     initialQuestion: 0,
     progressType: 'dots',
     passPercentage: 50,
@@ -177,6 +176,67 @@ H5P.QuestionSet = function (options, contentId, contentData) {
     });
     questionInstances.push(questionInstance);
   }
+
+  function randomizeQuestions() {
+
+    console.log("randomizing");
+
+    // Find all question containers and remove questions from them
+    $('.question-container', $myDom).each(function (){
+      $(this).children().detach();
+    });
+
+
+    questionInstances = H5P.shuffleArray(questionInstances);
+
+    // Reattach questions
+    for (var i = 0; i < questionInstances.length; i++) {
+      var question = questionInstances[i];
+
+      question.attach($('.question-container:eq(' + i + ')', $myDom));
+
+      // Add next/finish button
+      if (questionInstances[questionInstances.length -1] === question) {
+
+        // Add finish question set button
+        question.addButton('finish', params.texts.finishButton,
+          moveQuestion.bind(this, 1), false);
+
+      } else {
+        // Only show button next button when answered or is allowed to go back
+        question.addButton('next', '', moveQuestion.bind(this, 1),
+          !params.disableBackwardsNavigation || !!question.getAnswerGiven(), {
+            href: '#', // Use href since this is a navigation button
+            'aria-label': params.texts.nextButton
+          });
+      }
+
+      // Add previous question button
+      question.addButton('prev', '', moveQuestion.bind(this, -1),
+        !(questionInstances[0] === question || params.disableBackwardsNavigation), {
+          href: '#', // Use href since this is a navigation button
+          'aria-label': params.texts.prevButton
+        });
+
+
+      question.showButton('prev');
+      // // Hide buttons since the order has changed
+      if (questionInstances[0] === question) {
+        question.hideButton('prev');
+      }
+
+      if (questionInstances[questionInstances.length-1] === question) {
+        question.hideButton('next');
+      }
+
+      if (questionInstances[questionInstances.length-1] !== question) {
+        question.hideButton('finish');
+      }
+
+    }
+
+  }
+
 
   // Resize all interactions on resize
   self.on('resize', function () {
@@ -356,6 +416,8 @@ H5P.QuestionSet = function (options, contentId, contentData) {
 
     //Force the last page to be reRendered
     rendered = false;
+
+    randomizeQuestions();
   };
 
   var rendered = false;
